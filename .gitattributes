@@ -1,0 +1,6 @@
+# 大体积模型权重走 Git LFS（避免 124MB 的 best.pt 撑爆仓库历史）
+# 启用方式（首次）: git lfs install
+*.pt    filter=lfs diff=lfs merge=lfs -text
+*.pth   filter=lfs diff=lfs merge=lfs -text
+*.onnx  filter=lfs diff=lfs merge=lfs -text
+*.engine filter=lfs diff=lfs merge=lfs -text

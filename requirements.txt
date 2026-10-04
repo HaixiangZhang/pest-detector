@@ -1,0 +1,18 @@
+
+# PyTorch CUDA 12.8 (for nvidia RTX 5060) 优先从南京大学镜像安装
+--index-url https://mirrors.nju.edu.cn/pytorch/whl/cu128
+--extra-index-url https://pypi.org/simple
+
+torch==2.7.0
+torchvision==0.22.0
+torchaudio==2.7.0
+ultralytics==8.4.104
+opencv-python==5.0.0.93
+numpy==2.2.6
+PyYAML==6.0.3
+
+# 以下为 ultralytics 的传递依赖，本项目代码未直接 import；
+# 显式固定版本以保证环境可复现（如需精简可删除，由 ultralytics 自行解析）
+Pillow==12.3.0
+matplotlib==3.10.9
+tqdm==4.67.1
