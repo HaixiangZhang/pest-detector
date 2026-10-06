@@ -1,6 +1,6 @@
 # ============================================================================
 # 部署配置 — cli.py 的 sahi / direct 子命令读取
-# （部署参数唯一来源；解析与字段级校验见 utils/config.py）
+# （部署参数唯一来源；解析与字段级校验见 src/pestdet/config/schema.py）
 # 优先级链: CLI 显式参数 > 本文件 > 代码内置默认值
 # ============================================================================
 # 说明:
@@ -15,7 +15,6 @@ mode: sahi                   # 检测模式: sahi（默认，切片高精度）|
 output_root: runs            # 输出根目录（相对项目根），产物落在 <output_root>/<视频名>_<时间戳>/
 
 # ---- 输出 ----
-save_video: true             # 是否写推理后视频
 save_json: true              # 是否写暂存数据 JSON
 video_name: tracked.mp4
 json_name: result.json
@@ -75,7 +74,7 @@ encode:
   crf: 23                    # H.264 质量（0-51，越小越清晰也越大；23 接近视觉无损）
   preset: veryfast           # x264 预设（ultrafast→veryslow，越慢压得越小；4K 建议 veryfast 起步）
 
-# ---- 草地遮罩（utils/roi.py 的 GrassMasker）----
+# ---- 草地遮罩（pestdet.core.roi 的 GrassMasker）----
 mask:
   enabled: true              # 总开关
   mode: auto                 # "auto"（自动绿色分割拟合）| "manual"（直接用 quad 手填坐标）
@@ -94,7 +93,7 @@ mask:
   max_area_ratio: 0.98       # 占比上限（接近满屏时多为误分割，同样视为失败）
   approx_eps_ratio: 0.02     # approxPolyDP 精度系数（相对凸包周长），不足 4 点自动放宽
 
-# ---- 跨帧关联与轨迹后处理（utils/tracker.py）----
+# ---- 跨帧关联与轨迹后处理（pestdet.core.tracker）----
 tracker:
   # 检测分流（ByteTrack 两轮匹配的高/低分界）
   high_thresh: 0.25          # 高于此值进第一轮匹配，且允许新建轨迹
@@ -137,11 +136,13 @@ tracker:
   confirm_window: 0          # 观察窗口（处理帧）；0 = 不启用窗口门控
   confirm_min_hits: 0        # 窗口内最少命中帧数；0 = 不启用窗口门控
 
-# ---- 检出帧快照（utils/snapshots.py）----
+# ---- 检出帧快照（pestdet.core.snapshots）----
 snapshots:
   enabled: true              # 总开关
+  mode: track                # 粒度: track=每只虫一张代表图（取该虫置信度最高的帧，张数=虫数）
+                             #       frame=每个"判定有虫"的帧一张（同帧多虫只落一张，张数=有虫帧数）
   dir_name: frames           # 输出子目录（相对输出目录）
   prefix: pest               # 文件名前缀
   fmt: jpg                   # 图片格式 jpg / png
   quality: 95                # JPEG 质量（png 忽略）
-  min_score: 0.0             # 只保存"至少有一条轨迹置信度不低于此值"的帧（0 = 全部）
+  min_score: 0.0             # track 模式: 该虫代表帧的置信度下限；frame 模式: 该帧的最低轨迹置信度（0 = 全部）

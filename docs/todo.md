@@ -178,45 +178,45 @@ P0 工程与配置打底 ──► P1 服务层与任务模型 ──► P2 前�
 
 ### P0 — 工程与配置打底（1–2 天）
 
-- [ ] **P0.1** `git init`；完善 `.gitignore`（补 `logs/`、`web/node_modules/`、`web/dist/`、`*.db`、`.venv/`、`.ruff_cache/`）
-- [ ] **P0.2** 首次提交（先把当前可运行状态入库，作为改造前的基线）
-- [ ] **P0.3** 新建 `pyproject.toml`（src 布局、依赖迁移自 `requirements.txt`、dev 依赖、ruff/black/pytest 配置）
-- [ ] **P0.4** 建 `src/pestdet/` 包骨架（`__init__.py` × 各层）
-- [ ] **P0.5** 迁移 `utils/paths.py` → `src/pestdet/infra/paths.py`（`PROJECT_ROOT` 改为可配置工作根，支持 `PESTDET_HOME`）
-- [ ] **P0.6** 迁移 `utils/imageio.py` → `src/pestdet/infra/imageio.py`
-- [ ] **P0.7** 迁移 `utils/registry.py` → `src/pestdet/infra/registry.py`
-- [ ] **P0.8** 迁移 `utils/{tracker,roi,sahi,render,snapshots}.py` → `src/pestdet/core/`
-- [ ] **P0.9** `core/tracker.py`：**去掉 `PIPELINE_CONFIG` 全局依赖**，`IoUTracker(config=...)` 显式传参
-- [ ] **P0.10** `core/render.py`：`print` 告警 → `logging.warning`
-- [ ] **P0.11** 迁移 `pipeline.py` 的检测器部分 → `core/detector.py`
-- [ ] **P0.12** 迁移 `pipeline.py` 的 `VideoPipeline` → `core/pipeline.py`（去掉 argparse/print，注入 logger/progress）
-- [ ] **P0.13** `core/pipeline.py`：新增 `cancel` 参数 + 帧循环内协作式取消检查 + 抛 `JobCancelled`
-- [ ] **P0.14** `utils/config.py` → `config/schema.py`（Pydantic 模型，逐字段翻译 `_PIPELINE_SCHEMA`）
-- [ ] **P0.15** `config/loader.py` + `config/errors.py`：**移除 import 期副作用与 `SystemExit`**，改抛 `ConfigError`
-- [ ] **P0.16** 迁移 argparse 部分 → `cli/main.py`（保留 `sahi` / `direct` / `roi` / `weights` 全部子命令）
-- [ ] **P0.17** 根 `cli.py` 改为转发 `pestdet.cli.main:main`
-- [ ] **P0.18** 删除 `pipeline.py`、`requirements.txt`、`utils/`（方案 A，一次性删除）、`__pycache__/`；同步更新 `README.md` 与项目记忆（见 2.4）
-- [ ] **P0.19** 写 `tests/conftest.py` + `tests/test_config.py`（配置校验，含错误分支）
-- [ ] **P0.20** 写 `tests/test_tracker_golden.py`（用 `detector` 注入假检测器，锁死"固定帧序列 → 固定计数"）
-- [ ] **P0.21** **冒烟对比**：`python cli.py sahi --source videos/test0.mp4 --max-frames 20` 与改造前输出一致
-- [ ] **P0.22** `README.md` 初版更新（新结构 + 兼容说明）
+- [ ] **P0.1** `git init`；完善 `.gitignore`（补 `logs/`、`web/node_modules/`、`web/dist/`、`*.db`、`.venv/`、`.ruff_cache/`）— 用户暂缓，先不提交
+- [ ] **P0.2** 首次提交（先把当前可运行状态入库，作为改造前的基线）— 用户暂缓，先不提交
+- [x] **P0.3** 新建 `pyproject.toml`（src 布局、依赖迁移自 `requirements.txt`、dev 依赖、ruff/black/pytest 配置）
+- [x] **P0.4** 建 `src/pestdet/` 包骨架（`__init__.py` × 各层）
+- [x] **P0.5** 迁移 `utils/paths.py` → `src/pestdet/infra/paths.py`（`PROJECT_ROOT` 改为可配置工作根，支持 `PESTDET_HOME`）
+- [x] **P0.6** 迁移 `utils/imageio.py` → `src/pestdet/infra/imageio.py`
+- [x] **P0.7** 迁移 `utils/registry.py` → `src/pestdet/infra/registry.py`
+- [x] **P0.8** 迁移 `utils/{tracker,roi,sahi,render,snapshots}.py` → `src/pestdet/core/`
+- [x] **P0.9** `core/tracker.py`：**去掉 `PIPELINE_CONFIG` 全局依赖**，`IoUTracker(config=...)` 显式传参
+- [x] **P0.10** `core/render.py`：`print` 告警 → `logging.warning`
+- [x] **P0.11** 迁移 `pipeline.py` 的检测器部分 → `core/detector.py`
+- [x] **P0.12** 迁移 `pipeline.py` 的 `VideoPipeline` → `core/pipeline.py`（去掉 argparse/print，注入 logger/progress）
+- [x] **P0.13** `core/pipeline.py`：新增 `cancel` 参数 + 帧循环内协作式取消检查 + 抛 `JobCancelled`
+- [x] **P0.14** `utils/config.py` → `config/schema.py`（Pydantic 模型，逐字段翻译 `_PIPELINE_SCHEMA`）
+- [x] **P0.15** `config/loader.py` + `config/errors.py`：**移除 import 期副作用与 `SystemExit`**，改抛 `ConfigError`
+- [x] **P0.16** 迁移 argparse 部分 → `cli/main.py`（保留 `sahi` / `direct` / `roi` / `weights` 全部子命令）
+- [x] **P0.17** 根 `cli.py` 改为转发 `pestdet.cli.main:main`
+- [x] **P0.18** 删除 `pipeline.py`、`requirements.txt`、`utils/`（方案 A，一次性删除）、`__pycache__/`；同步更新 `README.md` 与项目记忆（见 2.4）
+- [x] **P0.19** 写 `tests/conftest.py` + `tests/test_config.py`（配置校验，含错误分支）
+- [x] **P0.20** 写 `tests/test_tracker_golden.py`（用 `detector` 注入假检测器，锁死"固定帧序列 → 固定计数"）
+- [ ] **P0.21** **冒烟对比**：`python cli.py sahi --source videos/test0.mp4 --max-frames 20` 与改造前输出一致 — 需 GPU，待用户同意后跑（已用 CPU 假检测器端到端冒烟 + `pytest` 23 项全绿替代）
+- [x] **P0.22** `README.md` 初版更新（新结构 + 兼容说明）
 
 **P0 验收**：旧命令行为不变；配置写错返回结构化错误而非杀进程；`pytest` 通过。
 
 ### P1 — 服务层与任务模型（2–3 天）
 
-- [ ] **P1.1** `jobs/models.py`：`Job` + `JobStatus`（含预留 `owner`）
-- [ ] **P1.2** `jobs/store.py`：SQLite 建表 + CRUD
-- [ ] **P1.3** `jobs/events.py`：事件总线（支持多订阅者，供 SSE）
-- [ ] **P1.4** `jobs/runner.py`：`ThreadPoolExecutor(max_workers=1)` + 取消
-- [ ] **P1.5** `infra/logging.py`：按 job 落 `logs/<job_id>.log`，同时推给事件总线
-- [ ] **P1.6** `services/analyze.py`：装配 config → core → job → 写 `result.json`
-- [ ] **P1.7** `api/errors.py`：领域异常 → HTTP + 结构化 body
-- [ ] **P1.8** `api/deps.py`：依赖注入位（预留鉴权，本期空实现）
-- [ ] **P1.9** `api/routes_meta.py`：videos / weights / config-schema / presets
-- [ ] **P1.10** `api/routes_jobs.py`：创建 / 列表 / 详情 / **SSE 事件流** / 取消 / result / video（**支持 Range**）/ frames / logs
-- [ ] **P1.11** `api/app.py`：装配路由 + `runs/` 静态目录 + CORS + 异常处理
-- [ ] **P1.12** `server.py`：uvicorn 启动入口
+- [x] **P1.1** `jobs/models.py`：`Job` + `JobStatus`（含预留 `owner`）
+- [x] **P1.2** `jobs/store.py`：SQLite 建表 + CRUD
+- [x] **P1.3** `jobs/events.py`：事件总线（支持多订阅者，供 SSE）
+- [x] **P1.4** `jobs/runner.py`：`ThreadPoolExecutor(max_workers=1)` + 取消
+- [x] **P1.5** `infra/logging.py`：按 job 落 `logs/<job_id>.log`，同时推给事件总线
+- [x] **P1.6** `services/analyze.py`：装配 config → core → job → 写 `result.json`
+- [x] **P1.7** `api/errors.py`：领域异常 → HTTP + 结构化 body
+- [x] **P1.8** `api/deps.py`：依赖注入位（预留鉴权，本期空实现）
+- [x] **P1.9** `api/routes_meta.py`：videos / weights / config-schema / presets
+- [x] **P1.10** `api/routes_jobs.py`：创建 / 列表 / 详情 / **SSE 事件流** / 取消 / result / video（**支持 Range**）/ frames / logs
+- [x] **P1.11** `api/app.py`：装配路由 + `runs/` 静态目录 + CORS + 异常处理
+- [x] **P1.12** `server.py`：uvicorn 启动入口
 
 **P1 验收**：`curl` 建任务 → SSE 收到进度 → 拿到 `result.json` 与 `tracked.mp4`；取消生效且状态为 `cancelled`。
 
@@ -224,28 +224,28 @@ P0 工程与配置打底 ──► P1 服务层与任务模型 ──► P2 前�
 
 > 调用 skill：`frontend-design`（主力），必要时叠加 `trae-remote-official:web-app-development:uicraft` 打磨。
 
-- [ ] **P2.1** Vite + React + TS + Ant Design 脚手架（`web/`）
-- [ ] **P2.2** `api/client.ts` + `api/types.ts`：API 封装与 SSE 订阅
-- [ ] **P2.3** 布局与路由（`App.tsx`）
-- [ ] **P2.4** `NewJob.tsx`：服务器视频下拉、模式切换、**schema 驱动参数表单**、提交
-- [ ] **P2.5** `ProgressPanel.tsx` + `LogViewer.tsx`：SSE 进度条 + 实时日志尾随 + 取消按钮
-- [ ] **P2.6** `ResultView.tsx`：计数卡片 + `tracked.mp4` 播放器（可拖动）
-- [ ] **P2.7** `SnapshotGrid.tsx`：检出帧快照网格 + 大图预览
-- [ ] **P2.8** `PerFrameChart.tsx`：逐帧计数曲线（数据来自 `per_frame`）
-- [ ] **P2.9** `Jobs.tsx`：任务列表（状态标签、时间、计数、进入详情）
-- [ ] **P2.10** 用 `TRAE-browseruse` 验证全链路，修交互与样式问题
+- [x] **P2.1** Vite + React + TS + Ant Design 脚手架（`web/`）
+- [x] **P2.2** `api/client.ts` + `api/types.ts`：API 封装与 SSE 订阅
+- [x] **P2.3** 布局与路由（`App.tsx`）
+- [x] **P2.4** `NewJob.tsx`：服务器视频下拉、模式切换、**schema 驱动参数表单**、提交
+- [x] **P2.5** `ProgressPanel.tsx` + `LogViewer.tsx`：SSE 进度条 + 实时日志尾随 + 取消按钮
+- [x] **P2.6** `ResultView.tsx`：计数卡片 + `tracked.mp4` 播放器（可拖动）
+- [x] **P2.7** `SnapshotGrid.tsx`：检出帧快照网格 + 大图预览
+- [x] **P2.8** `PerFrameChart.tsx`：逐帧计数曲线（数据来自 `per_frame`）
+- [x] **P2.9** `Jobs.tsx`：任务列表（状态标签、时间、计数、进入详情）
+- [ ] **P2.10** 用 `TRAE-browseruse` 验证全链路，修交互与样式问题 — 待前端 `npm install` 后做（用户已暂停前端依赖安装）
 
 **P2 验收**：浏览器完成"选视频 → 跑 → 看进度 → 看结果"全链路。
 
 ### P3 — 收尾与文档（2–3 天）
 
-- [ ] **P3.1** 轨迹叠加到帧上（用 `tracks[].path` 逐帧中心点）
-- [ ] **P3.2** `configs/presets/*.yaml` + 前端预设保存/加载
-- [ ] **P3.3** `scripts/start.ps1`：构建前端 → 启动 uvicorn
-- [ ] **P3.4** `tests/test_api.py`：API 冒烟
-- [ ] **P3.5** `docs/DEPLOY.md`（GPU 服务器部署：CUDA 环境、端口、ffmpeg、数据目录）
-- [ ] **P3.6** `README.md` 定稿
-- [ ] **P3.7** 更新项目记忆（目录结构、入口约定、配置模型变更）
+- [ ] **P3.1** 轨迹叠加到帧上（用 `tracks[].path` 逐帧中心点）— 未实现，当前以轨迹 JSON 列表展示，后续增强项
+- [x] **P3.2** `configs/presets/*.yaml` + 前端预设保存/加载
+- [x] **P3.3** `scripts/start.ps1`：构建前端 → 启动 uvicorn
+- [x] **P3.4** `tests/test_api.py`：API 冒烟
+- [x] **P3.5** `docs/DEPLOY.md`（GPU 服务器部署：CUDA 环境、端口、ffmpeg、数据目录）
+- [x] **P3.6** `README.md` 定稿
+- [x] **P3.7** 更新项目记忆（目录结构、入口约定、配置模型变更）
 
 **P3 验收**：按文档在新机器跑通；`pytest` 全绿。
 

@@ -4,18 +4,40 @@ __pycache__/
 *.egg-info/
 .venv/
 venv/
+.pytest_cache/
+.ruff_cache/
 
 # Jupyter
 .ipynb_checkpoints/
 
 # 运行产物（每次运行都会生成，不入库）
 runs/
+logs/
+data/
+*.db
+*.log
+
+# 测试视频（体积大，不入库；需要时本地自备）
+videos/
+
+# 前端
+web/node_modules/
+web/dist/
+web/.vite/
+web/.npm-cache/
+# 前端构建产物（源码是 vite.config.ts；tsc 生成的 .js/.d.ts 与 tsbuildinfo 不入库）
+web/vite.config.js
+web/vite.config.d.ts
+web/*.tsbuildinfo
 
 # 编辑器 / 系统
 .idea/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# 启动脚本缓存（记录上次探测到的项目解释器路径，双击启动用）
+.pestdet-python
 
 # 大体积模型权重由 .gitattributes 交给 Git LFS 管理（首次需 git lfs install），
 # 因此这里不忽略 *.pt；若不想入库，取消下面注释

@@ -1,0 +1,55 @@
+# pest_detector Web 服务 — systemd 单元模板
+#
+# 这是一份**手工参考模板**：把占位符替换成实际值后放到
+#   /etc/systemd/system/pestdet.service
+# 再执行:
+#   sudo systemctl daemon-reload && sudo systemctl enable --now pestdet
+#
+# 更省事的做法是直接用安装脚本（会自动探测解释器、生成单元、建目录、装软链）:
+#   sudo ./scripts/install-service.sh --host 0.0.0.0 --port 8000
+#
+# 占位符:
+#   <REPO>     仓库绝对路径，如 /opt/pest_detector
+#   <HOME>     工作根 PESTDET_HOME，如 /data/pest_detector（不设独立数据盘时填 <REPO>）
+#   <PYTHON>   装有项目依赖的解释器，如 /opt/conda/envs/yolo11/bin/python
+#   <PORT>     监听端口，如 8000
+#
+# 注意:
+#   - 必须单 worker（任务执行器是进程内的：线程池 + 内存事件总线 + 单 SQLite）。
+#   - 代码从 $PESTDET_HOME 读 configs.yaml / runs / data / web/dist；指向独立目录时，
+#     需保证该目录下有 configs.yaml，且 web/dist 可用（install-service.sh 会自动建软链）。
+
+[Unit]
+Description=pest_detector Web 服务
+Documentation=file://<REPO>/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=<REPO>
+
+# 工作根（configs.yaml / runs / data / web/dist 都相对它解析）
+Environment=PESTDET_HOME=<HOME>
+# 未 pip install -e . 时，靠 PYTHONPATH 找到 pestdet 包
+Environment=PYTHONPATH=<REPO>/src
+# 上传大小上限（MB），与 Nginx client_max_body_size 保持一致
+Environment=PESTDET_MAX_UPLOAD_MB=4096
+
+# 以非 root 用户运行（可选，建议；需该用户对 <HOME> 有读写权限）
+# User=pest
+# Group=pest
+
+ExecStart=<PYTHON> -m pestdet.server --host 0.0.0.0 --port <PORT>
+
+Restart=on-failure
+RestartSec=5
+# 推理在进程内跑，停止时给足收尾时间（避免留下半截产物）
+KillMode=mixed
+TimeoutStopSec=30
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
