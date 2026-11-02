@@ -91,11 +91,11 @@ python cli.py weights --list
 **Linux / macOS**（首次使用需 `chmod +x scripts/*.sh`）：
 
 ```bash
-./scripts/start.sh                                   # 自检 + 启动；Ctrl+C 停止
-./scripts/start.sh --host 0.0.0.0 --port 8000        # 对外提供服务
-./scripts/start.sh --build                           # 首次 / 前端有改动：先构建前端
-./scripts/start.sh --install                         # 依赖缺失时自动装 Web 依赖
-./scripts/check.sh                                   # 只自检不启动（退出码 0 通过 / 1 有错误）
+./app/scripts/start.sh                                   # 自检 + 启动；Ctrl+C 停止
+./app/scripts/start.sh --host 0.0.0.0 --port 8000        # 对外提供服务
+./app/scripts/start.sh --build                           # 首次 / 前端有改动：先构建前端
+./app/scripts/start.sh --install                         # 依赖缺失时自动装 Web 依赖
+./app/scripts/check.sh                                   # 只自检不启动（退出码 0 通过 / 1 有错误）
 ```
 
 **Windows**：
@@ -120,16 +120,16 @@ pestdet-server --host 0.0.0.0 --port 8000
 ### 4.3 常驻服务（systemd）
 
 ```bash
-sudo ./scripts/install-service.sh --host 0.0.0.0 --port 8000
+sudo ./app/scripts/install-service.sh --host 0.0.0.0 --port 8000
 # 独立数据盘 + 非 root 运行:
-sudo ./scripts/install-service.sh --home /data/pest_detector --user pest --group pest
+sudo ./app/scripts/install-service.sh --home /data/pest_detector --user pest --group pest
 # 显式指定解释器:
-sudo ./scripts/install-service.sh --python /opt/conda/envs/yolo11/bin/python
+sudo ./app/scripts/install-service.sh --python /opt/conda/envs/yolo11/bin/python
 ```
 
 安装脚本会：探测解释器 → 创建 `data/uploads`、`runs`、`logs` → 生成
 `/etc/systemd/system/pestdet.service` → `daemon-reload` + `enable --now`。
-卸载用 `sudo ./scripts/uninstall-service.sh`（只删单元，不动数据目录）。
+卸载用 `sudo ./app/scripts/uninstall-service.sh`（只删单元，不动数据目录）。
 手工配置参考模板 [`deploy/systemd/pestdet.service`](../deploy/systemd/pestdet.service)。
 
 > **`PESTDET_HOME` 与前端产物**：代码从 `$PESTDET_HOME/web/dist` 挂载前端
@@ -183,7 +183,7 @@ server {
 systemd 服务推荐用安装脚本生成（见 [4.3](#43-常驻服务systemd)）：
 
 ```bash
-sudo ./scripts/install-service.sh --host 0.0.0.0 --port 8000
+sudo ./app/scripts/install-service.sh --host 0.0.0.0 --port 8000
 ```
 
 需手工配置时，参考模板 [`deploy/systemd/pestdet.service`](../deploy/systemd/pestdet.service)

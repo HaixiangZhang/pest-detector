@@ -21,7 +21,7 @@
 ### 方式三：Linux / macOS
 
 ```bash
-./scripts/start.sh --open
+./app/scripts/start.sh --open
 ```
 
 启动成功后浏览器打开 `http://127.0.0.1:8000/`；接口文档在 `/api/docs`（Swagger）。
@@ -85,7 +85,8 @@ $env:PESTDET_WEIGHT_URL = "http://内网镜像/tiling_104121.pt"
 .\scripts\start.ps1 -Python "D:\miniconda3\envs\yolo11\python.exe" -Open
 ```
 
-**提示端口被占用**：换端口 `-Port 8001`，或结束占用该端口的进程。
+**提示端口被占用**：如果占用者就是本项目的服务，双击启动会自动复用并只打开浏览器，
+无需重复启动；若被其它程序占用，换端口 `-Port 8001`，或结束占用该端口的进程。
 
 **权重自动下载失败**：多半是 Release 尚未上传或网络受限。手动下载后放到
 `configs.yaml` 中 `model_path` 指向的位置（默认 `./best.pt`）即可，页面会自动识别。

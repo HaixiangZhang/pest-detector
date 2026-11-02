@@ -6,34 +6,37 @@
 两种用法：
 
 - **Web 应用**（推荐）：浏览器选视频 → 提交任务 → 看实时进度 → 看结果（计数/视频/快照/曲线）
-- **命令行**：`python cli.py sahi|direct|roi|weights ...`，适合脚本化与调试
+- **命令行**：`python app\cli.py sahi|direct|roi|weights ...`，适合脚本化与调试
 
 ---
 
 ## 快速开始
 
 ```powershell
+# 0. 进入程序目录（所有依赖安装都在 app\ 下执行）
+cd app
+
 # 1. 安装依赖
 #    CUDA 版 PyTorch 需先从专用源装（适配 RTX 50 系 / CUDA 12.8），否则 pip 会拉 CPU 轮子
 pip install torch==2.7.0 torchvision==0.22.0 torchaudio==2.7.0 --index-url https://download.pytorch.org/whl/cu128
 pip install -e ".[web,dev]"        # 只要命令行可省去 [web]
 
-# 2. 启动
-#    脚本会自动找到装有依赖的解释器，无需手动 conda activate；
-#    也可以直接双击项目根目录的 start.bat（自检 + 启动 + 打开浏览器）
-.\scripts\start.ps1 -Open
+# 2. 启动（回到仓库根；脚本支持在任意目录执行）
+#    也可以直接双击仓库根的 start.bat（自检 + 启动 + 打开浏览器）
+cd ..
+.\app\scripts\start.ps1 -Open
 
 # 3. 浏览器打开 http://127.0.0.1:8000/   （API 文档: /api/docs）
 ```
 
-> 未 `pip install -e .` 时，仓库根的 `cli.py` 会自动把 `src/` 加入 `sys.path`，
-> `python cli.py ...` 依然可用；Web 侧请设 `PYTHONPATH=src` 或直接安装。
+> 未 `pip install -e .` 时，`app\cli.py` 会自动把 `app\src` 加入 `sys.path`，
+> `python app\cli.py ...` 依然可用；Web 侧请设 `PYTHONPATH=app\src` 或直接安装。
 
 ### 命令行直接跑
 
 ```powershell
-python cli.py sahi --source videos/test0.mp4      # 切片检测（精度优先）
-python cli.py direct --source videos/test0.mp4    # 整帧直推（速度优先）
+python app\cli.py sahi --source videos/test0.mp4      # 切片检测（精度优先）
+python app\cli.py direct --source videos/test0.mp4    # 整帧直推（速度优先）
 ```
 
 产物默认写到 `runs/<视频名>_<时间戳>/`：
@@ -60,40 +63,41 @@ Web 端 = **后端**（FastAPI + Uvicorn）+ **前端**（Vite 构建产物 `web
 
 脚本会先做一次环境自检，通过后自动启动服务，**不需要手动 `conda activate`**。
 
-**Linux / macOS**（首次使用需 `chmod +x scripts/*.sh`）：
+**Linux / macOS**（首次使用需 `chmod +x app/scripts/*.sh`）：
 
 ```bash
-./scripts/start.sh                                 # 自检 + 启动；Ctrl+C 停止
-./scripts/check.sh                                 # 只自检不启动（退出码 0 通过 / 1 有错误）
-./scripts/start.sh --build                         # 首次 / 前端有改动：先构建前端再启动
-./scripts/start.sh --reload                        # 开发热重载（改后端代码自动重启）
-./scripts/start.sh --host 0.0.0.0 --port 8000      # 对外提供服务（服务器 / 局域网）
-./scripts/start.sh --install                       # 依赖缺失时，自动装 Web 依赖
+./app/scripts/start.sh                                 # 自检 + 启动；Ctrl+C 停止
+./app/scripts/check.sh                                 # 只自检不启动（退出码 0 通过 / 1 有错误）
+./app/scripts/start.sh --build                         # 首次 / 前端有改动：先构建前端再启动
+./app/scripts/start.sh --reload                        # 开发热重载（改后端代码自动重启）
+./app/scripts/start.sh --host 0.0.0.0 --port 8000      # 对外提供服务（服务器 / 局域网）
+./app/scripts/start.sh --install                       # 依赖缺失时，自动装 Web 依赖
 ```
 
-Linux 服务器常驻（systemd）：`sudo ./scripts/install-service.sh --host 0.0.0.0 --port 8000`
-会生成单元文件并 `enable --now`；卸载用 `sudo ./scripts/uninstall-service.sh`。
-细节见 [docs/DEPLOY.md](docs/DEPLOY.md)。
+Linux 服务器常驻（systemd）：`sudo ./app/scripts/install-service.sh --host 0.0.0.0 --port 8000`
+会生成单元文件并 `enable --now`；卸载用 `sudo ./app/scripts/uninstall-service.sh`。
+细节见 [docs/DEPLOY.md](app/docs/DEPLOY.md)。
 
 **Windows**：在资源管理器里**双击项目根目录的 `start.bat`**（自检 + 启动 + 自动打开浏览器），
-或在任意终端执行 `.\scripts\start.ps1`。
+或在任意终端执行 `.\app\scripts\start.ps1`。
 
 ```powershell
-.\scripts\start.ps1                                # 自检 + 启动；Ctrl+C 停止
-.\scripts\start.ps1 -Open                          # 启动后自动打开浏览器
-.\scripts\check.ps1                                # 只自检不启动（退出码 0 通过 / 1 有错误）
-.\scripts\start.ps1 -Build                         # 首次 / 前端有改动：先构建前端再启动
-.\scripts\start.ps1 -Reload                        # 开发热重载（改后端代码自动重启）
-.\scripts\start.ps1 -BindHost 0.0.0.0 -Port 8000   # 对外提供服务（服务器 / 局域网）
-.\scripts\start.ps1 -Install                       # 依赖缺失时，自动装进当前 conda 环境
+.\app\scripts\start.ps1                                # 自检 + 启动；Ctrl+C 停止
+.\app\scripts\start.ps1 -Open                          # 启动后自动打开浏览器
+.\app\scripts\check.ps1                                # 只自检不启动（退出码 0 通过 / 1 有错误）
+.\app\scripts\start.ps1 -Build                         # 首次 / 前端有改动：先构建前端再启动
+.\app\scripts\start.ps1 -Reload                        # 开发热重载（改后端代码自动重启）
+.\app\scripts\start.ps1 -BindHost 0.0.0.0 -Port 8000   # 对外提供服务（服务器 / 局域网）
+.\app\scripts\start.ps1 -Install                       # 依赖缺失时，自动装进当前 conda 环境
 ```
 
-`scripts\start.bat` 是双击入口，等价于 `powershell -ExecutionPolicy Bypass -File scripts\start.ps1`，
-并支持透传参数（如 `start.bat -Build -Open`）。
+`app\scripts\start.bat` 是脚本内启动入口，等价于
+`powershell -ExecutionPolicy Bypass -File app\scripts\start.ps1`，并支持透传参数（如 `-Build -Open`）。
+仓库根的 `start.bat` 只是双击包装，转发给它。
 
 #### 启动前的自动自检
 
-每次启动都会先跑一遍检查（也可单独执行 `.\scripts\check.ps1`），逐项给出 `[OK] / [WARN] / [FAIL]`：
+每次启动都会先跑一遍检查（也可单独执行 `.\app\scripts\check.ps1`），逐项给出 `[OK] / [WARN] / [FAIL]`：
 
 | 检查项 | `FAIL` / `WARN` 的后果 |
 | --- | --- |
@@ -113,10 +117,10 @@ Linux 服务器常驻（systemd）：`sudo ./scripts/install-service.sh --host 0
 探测顺序：`-Python` > `$env:PESTDET_PYTHON` > **缓存** > 当前 conda 环境 > PATH 的 `python` >
 自动发现的其它 conda 环境（由 `conda` / `python` 所在安装根推出 `envs\*`，并扫描常见安装位置）> `.venv`。
 
-首次成功启动后，选中的解释器路径会写入项目根 `.pestdet-python`（已 gitignore）。之后**即使不激活 conda、
+首次成功启动后，选中的解释器路径会写入 `app\.pestdet-python`（已 gitignore）。之后**即使不激活 conda、
 甚至直接双击**（PATH 里没有 conda），也能凭缓存直接找到 yolo11。换了环境后删掉该文件即可重新探测。
 
-> 因此 `powershell -ExecutionPolicy Bypass -File scripts\start.ps1` 也能用：即便子 PowerShell 把环境
+> 因此 `powershell -ExecutionPolicy Bypass -File app\scripts\start.ps1` 也能用：即便子 PowerShell 把环境
 > 切成 base，脚本也会自己找到 yolo11。若提示"禁止运行脚本"，执行一次：
 > `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`。
 
@@ -133,6 +137,9 @@ Linux 服务器常驻（systemd）：`sudo ./scripts/install-service.sh --host 0
 ### 方式二：手动命令
 
 ```powershell
+# 以下命令都在 app\ 目录内执行
+cd app
+
 # 1) 装后端依赖（含 Web）
 pip install -e ".[web]"
 
@@ -151,7 +158,7 @@ pestdet-server --host 127.0.0.1 --port 8000
 浏览器打开 **http://127.0.0.1:8000/** ； 接口文档 **http://127.0.0.1:8000/api/docs** 。
 
 > 未 `pip install -e .` 时，给启动命令加 `PYTHONPATH`：
-> `$env:PYTHONPATH="src"; python -m pestdet.server --host 127.0.0.1 --port 8000`
+> `$env:PYTHONPATH="app\src"; python -m pestdet.server --host 127.0.0.1 --port 8000`
 
 ### 方式三：前端开发模式（改前端热更新）
 
@@ -243,13 +250,13 @@ curl -X POST http://127.0.0.1:8000/api/jobs -H "Content-Type: application/json" 
 ```
 
 > **部署到 GPU 服务器**（反代 / systemd / 多用户演进点 / 排障）见
-> [docs/DEPLOY.md](docs/DEPLOY.md)。
+> [docs/DEPLOY.md](app/docs/DEPLOY.md)。
 
 ---
 
 ## 命令行入口
 
-所有功能收敛到根目录 `cli.py`（薄转发层），实际实现位于 `src/pestdet/cli/main.py`，
+所有功能收敛到 `app\cli.py`（薄转发层），实际实现位于 `app/src/pestdet/cli/main.py`，
 用子命令区分：
 
 | 子命令 | 作用 | 底层实现 |
@@ -265,9 +272,9 @@ curl -X POST http://127.0.0.1:8000/api/jobs -H "Content-Type: application/json" 
 安装后也可用等价的 `pestdet` 命令（`[project.scripts]` 注册）：
 
 ```powershell
-python cli.py --help              # 列出全部子命令
-python cli.py sahi --help         # 查看某子命令的参数
-pestdet sahi --source videos/test0.mp4   # 与 python cli.py sahi 等价（需 pip install -e .）
+python app\cli.py --help              # 列出全部子命令
+python app\cli.py sahi --help         # 查看某子命令的参数
+pestdet sahi --source videos/test0.mp4   # 与 python app\cli.py sahi 等价（需 pip install -e .）
 ```
 
 ---
@@ -275,14 +282,19 @@ pestdet sahi --source videos/test0.mp4   # 与 python cli.py sahi 等价（需 p
 ## 目录结构
 
 ```
-pest_detector/
+pest_detector/             # 仓库根：只放启动入口与仓库元文件
+├── start.bat              #   双击入口（自检 + 启动 + 打开浏览器）
+├── README.md              #   项目说明
+├── .gitignore             #   忽略运行产物
+├── .gitattributes         #   Git LFS 规则（*.pt 等大文件）
+└── app/                   #   程序目录（下面所有内容都在 app/ 下）
+
+app/                       # 程序目录内部结构
 ├── cli.py                # 统一命令行入口（薄转发 → pestdet.cli.main:main）
 ├── pyproject.toml        # 包元数据 / 依赖 / ruff / black / pytest 配置
 ├── configs.yaml          # 部署参数（默认模板，唯一默认值来源）
 ├── configs/presets/      # 参数预设（default = 默认，网页端「保存推理配置」写回）
 ├── best.pt               # 部署权重（YOLO11x-P2 单类别模型，Git LFS 管理）
-├── README.md
-├── .gitattributes        # Git LFS 规则（*.pt 等大文件）
 │
 ├── docs/
 │   ├── PLAN_web_mvp.md   # Web 化 MVP 规划
@@ -362,7 +374,7 @@ api / cli  →  services  →  jobs  →  core
 
 ## 配置
 
-所有部署参数集中在项目根的 **`configs.yaml`**，改参数只改该文件，无需动代码。
+所有部署参数集中在 **`app/configs.yaml`**，改参数只改该文件，无需动代码。
 优先级链：**CLI 显式参数 / 请求 params > 预设 > `configs.yaml`**。
 
 配置由 `pestdet.config`（Pydantic 模型）在**显式调用 `load_config()` 时**校验，
@@ -388,7 +400,7 @@ CLI 会打印后退出，API 会转成 **422 + 字段级错误列表**：
 | `default`（默认） | 当前部署配置的推理参数快照；网页端点「保存推理配置」即写回它 |
 
 ```powershell
-python cli.py sahi --source videos/test0.mp4   # CLI 侧直接改 configs.yaml 即可
+python app\cli.py sahi --source videos/test0.mp4   # CLI 侧直接改 configs.yaml 即可
 curl -X POST http://127.0.0.1:8000/api/jobs -H "Content-Type: application/json" `
   -d '{"source":"videos/test0.mp4","mode":"sahi","preset":"default"}'
 ```
@@ -416,12 +428,12 @@ curl -X POST http://127.0.0.1:8000/api/jobs -H "Content-Type: application/json" 
 
 ### 工作根（`PESTDET_HOME`）
 
-`configs.yaml` / `runs/` / `videos/` / `logs/` 默认相对**仓库根**解析。部署到服务器时，
+`configs.yaml` / `runs/` / `videos/` / `logs/` 默认相对**程序目录 `app\`** 解析。部署到服务器时，
 可设环境变量 `PESTDET_HOME` 指向数据根目录，`paths.py` 会优先使用它。
 
-> 注意：前端产物同样从 `$PESTDET_HOME/web/dist` 挂载。若 `PESTDET_HOME` 不是仓库根，
-> 需保证该目录下有 `configs.yaml` 且 `web/dist` 可见；`scripts/start.sh` 与
-> `scripts/install-service.sh` 会自动把 `web/dist` 软链过去。
+> 注意：前端产物同样从 `$PESTDET_HOME/web/dist` 挂载。若 `PESTDET_HOME` 不是程序目录 `app\`，
+> 需保证该目录下有 `configs.yaml` 且 `web/dist` 可见；`app/scripts/start.sh` 与
+> `app/scripts/install-service.sh` 会自动把 `web/dist` 软链过去。
 
 ---
 
@@ -443,20 +455,20 @@ git add .gitattributes best.pt
 
 ```powershell
 # 指定权重（登记名 pest1 / 直接路径；--weights 是 --model 的同义写法）
-python cli.py sahi --source videos/test0.mp4 --model pest1
+python app\cli.py sahi --source videos/test0.mp4 --model pest1
 
 # 调试：抽帧加速、关闭草地遮罩、不存快照
-python cli.py sahi --source videos/test0.mp4 --stride 2
-python cli.py sahi --source videos/test0.mp4 --no-mask
-python cli.py sahi --source videos/test0.mp4 --no-snapshots
+python app\cli.py sahi --source videos/test0.mp4 --stride 2
+python app\cli.py sahi --source videos/test0.mp4 --no-mask
+python app\cli.py sahi --source videos/test0.mp4 --no-snapshots
 
 # 权重登记与查询
-python cli.py weights --save best.pt --tag deploy
-python cli.py weights --save best.pt --tag deploy --metrics mAP50=0.87
-python cli.py weights --list
+python app\cli.py weights --save best.pt --tag deploy
+python app\cli.py weights --save best.pt --tag deploy --metrics mAP50=0.87
+python app\cli.py weights --list
 
 # ROI 调参预览（确认绿色分割是否贴合草地）
-python cli.py roi --source videos/test0.mp4 --out runs/roi_preview.png
+python app\cli.py roi --source videos/test0.mp4 --out runs/roi_preview.png
 ```
 
 ---

@@ -16,6 +16,8 @@
 #   - 探测顺序: -Python > $env:PESTDET_PYTHON > 当前 conda 环境 > PATH 的 python > 其它 conda 环境 > .venv
 #   - 启动前自动自检: 解释器/依赖、configs.yaml、模型权重、前端产物、ffmpeg、端口占用、数据目录。
 #   - web/dist 不存在时自动构建前端（需要 Node.js）。
+#   - 端口被本项目已运行的实例占用（/api/system/info 可访问）时，直接复用该实例：
+#     双击启动只会打开浏览器，不会报错，也不会重复起进程。
 #   - 推理在**进程内**单 worker 串行执行，请勿用多 worker 启动。
 #   - 本文件必须保存为 UTF-8 with BOM，否则 PowerShell 5.1 会把中文按 GBK 解码成乱码。
 
@@ -38,6 +40,10 @@ $env:PYTHONPATH = Join-Path $root "src"
 
 $script:FailCount = 0
 $script:WarnCount = 0
+
+# 访问地址（BindHost=0.0.0.0 时本机仍用 127.0.0.1）
+$urlHost = if ($BindHost -eq "0.0.0.0") { "127.0.0.1" } else { $BindHost }
+$url = "http://${urlHost}:$Port/"
 
 function Write-Item([string]$Status, [string]$Label, [string]$Detail) {
     switch ($Status) {
@@ -284,11 +290,24 @@ if ($ffmpegCmd) {
 }
 
 # 7) 端口占用
+#    若占用者是本项目已运行的实例（/api/system/info 能返回版本号），直接复用：
+#    双击启动时只打开浏览器，不再报 FAIL。
+$script:ExistingInstance = $false
 $listen = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
 if ($listen) {
     $pids = @($listen | Select-Object -ExpandProperty OwningProcess -Unique)
     $names = ($pids | ForEach-Object { "PID $_" }) -join ", "
-    Write-Item "FAIL" "端口 $Port" "已被占用（$names）→ 换端口: -Port 8001，或先结束该进程"
+    $resp = $null
+    try {
+        $resp = Invoke-WebRequest -Uri "http://${urlHost}:$Port/api/system/info" `
+                -UseBasicParsing -TimeoutSec 3 -ErrorAction SilentlyContinue
+    } catch { $resp = $null }
+    if ($resp -and $resp.StatusCode -eq 200 -and $resp.Content -match '"version"') {
+        $script:ExistingInstance = $true
+        Write-Item "OK" "端口 $Port" "已有 pest_detector 实例在运行（$names），直接复用"
+    } else {
+        Write-Item "FAIL" "端口 $Port" "已被其它程序占用（$names）→ 换端口: -Port 8001，或先结束该进程"
+    }
 } else {
     Write-Item "OK" "端口 $Port" "空闲"
 }
@@ -332,6 +351,19 @@ if ($script:FailCount -gt 0) {
     exit 1
 }
 
+# --- 已运行的实例：直接复用，不重复启动 -------------------------------------
+if ($script:ExistingInstance) {
+    Write-Host "[复用] 已有 pest_detector 实例在运行，无需重复启动。" -ForegroundColor Cyan
+    Write-Host "       地址: $url" -ForegroundColor Cyan
+    if ($Open) {
+        Start-Process $url
+        Write-Host "       已为你打开浏览器。" -ForegroundColor DarkGray
+    } else {
+        Write-Host "       需要另起一个实例请换端口: -Port 8001" -ForegroundColor DarkGray
+    }
+    exit 0
+}
+
 # --- 前端构建 ---------------------------------------------------------------
 # web/dist 已随仓库发布，一般无需 Node；只有源码比产物新时才重建。
 $needBuild = $Build -or -not (Test-Path $distIndex)
@@ -358,8 +390,6 @@ if ($needBuild) {
 }
 
 # --- 启动 -------------------------------------------------------------------
-$urlHost = if ($BindHost -eq "0.0.0.0") { "127.0.0.1" } else { $BindHost }
-$url = "http://${urlHost}:$Port/"
 Write-Host "[启动] $url  (Ctrl+C 停止)" -ForegroundColor Cyan
 Write-Host "       首次打开页面会自动检测环境并下载缺失的权重。" -ForegroundColor DarkGray
 
