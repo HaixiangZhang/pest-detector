@@ -114,8 +114,21 @@ Linux 服务器常驻（systemd）：`sudo ./app/scripts/install-service.sh --ho
 
 #### 解释器是怎么找到的
 
-探测顺序：`-Python` > `$env:PESTDET_PYTHON` > **缓存** > 当前 conda 环境 > PATH 的 `python` >
-自动发现的其它 conda 环境（由 `conda` / `python` 所在安装根推出 `envs\*`，并扫描常见安装位置）> `.venv`。
+启动第一步会先扫描虚拟环境，并把可用的那个作为**启动环境**：
+
+```
+[OK] 虚拟环境     发现 1 个可用环境
+      [可用 ] conda: yolo11  (...\envs\yolo11\python.exe)
+[OK] Python 解释器 ...\envs\yolo11\python.exe  ← 作为启动环境（conda: yolo11）
+```
+
+扫描范围：当前终端已激活的 `VIRTUAL_ENV` / `CONDA_PREFIX`，以及 `app\.venv`、`app\venv`、
+`app\env`、仓库根 `.venv`（Windows 找 `Scripts\python.exe`、conda 找环境根的 `python.exe`）。
+每项都会检查是否装有 torch / ultralytics / fastapi / uvicorn，缺依赖的标为「缺依赖」。
+
+探测顺序：`-Python` > 当前已激活的虚拟环境（venv / conda）> 项目内 / 仓库根 `.venv` > **缓存** >
+PATH 的 `python` > 自动发现的其它 conda 环境（由 `conda` / `python` 所在安装根推出 `envs\*`，
+并扫描常见安装位置）。
 
 首次成功启动后，选中的解释器路径会写入 `app\.pestdet-python`（已 gitignore）。之后**即使不激活 conda、
 甚至直接双击**（PATH 里没有 conda），也能凭缓存直接找到 yolo11。换了环境后删掉该文件即可重新探测。
