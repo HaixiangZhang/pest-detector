@@ -13,7 +13,8 @@
 # 说明:
 #   - 自动探测"装有项目依赖"的 Python（torch / ultralytics / fastapi / uvicorn），
 #     因此无需手动 conda activate，也不受 `powershell -File` 子进程切成 base 的影响。
-#   - 探测顺序: -Python > $env:PESTDET_PYTHON > 当前 conda 环境 > PATH 的 python > 其它 conda 环境 > .venv
+#   - 探测顺序: -Python > 当前已激活的虚拟环境（venv / conda）> app\.venv / venv / 仓库根 .venv
+#               > 缓存 (.pestdet-python) > PATH 的 python > 其它 conda 环境
 #   - 启动前自动自检: 解释器/依赖、configs.yaml、模型权重、前端产物、ffmpeg、端口占用、数据目录。
 #   - web/dist 不存在时自动构建前端（需要 Node.js）。
 #   - 端口被本项目已运行的实例占用（/api/system/info 可访问）时，直接复用该实例：
@@ -123,9 +124,20 @@ function Save-CachedPython([string]$exe) {
 function Get-CandidatePythons {
     $list = New-Object System.Collections.Generic.List[string]
     if ($Python) { $list.Add($Python) }
+    # 当前已激活的虚拟环境优先（终端里 conda activate / 激活 venv 后再启动）
+    if ($env:VIRTUAL_ENV) {
+        $list.Add((Join-Path $env:VIRTUAL_ENV "Scripts\python.exe"))
+        $list.Add((Join-Path $env:VIRTUAL_ENV "bin\python"))
+    }
+    if ($env:CONDA_PREFIX) { $list.Add((Join-Path $env:CONDA_PREFIX "python.exe")) }
+    # 项目内 / 仓库根的虚拟环境
+    foreach ($d in @((Join-Path $root ".venv"), (Join-Path $root "venv"), (Join-Path $root "env"),
+                     (Join-Path (Split-Path $root -Parent) ".venv"))) {
+        $list.Add((Join-Path $d "Scripts\python.exe"))
+        $list.Add((Join-Path $d "bin\python"))
+    }
     $cached = Get-CachedPython
     if ($cached) { $list.Add($cached) }
-    if ($env:CONDA_PREFIX) { $list.Add((Join-Path $env:CONDA_PREFIX "python.exe")) }
 
     # 收集可能的 conda 安装根（不依赖已激活环境，支持双击运行）
     $bases = New-Object System.Collections.Generic.List[string]
@@ -161,9 +173,37 @@ function Get-CandidatePythons {
     }
 
     $list.Add("python")
-    $venv = Join-Path $root ".venv\Scripts\python.exe"
-    if (Test-Path $venv) { $list.Add($venv) }
     return ($list | Where-Object { $_ } | Select-Object -Unique)
+}
+
+# 探测虚拟环境（当前已激活 conda / venv、项目内 .venv、仓库根 .venv），
+# 返回 {Label, Path, Kind, Ready}。Ready = 该环境装有项目依赖。
+function Get-VirtualEnvs {
+    $items = New-Object System.Collections.Generic.List[object]
+    $add = {
+        param($label, $prefix, $kind)
+        if (-not $prefix) { return }
+        $prefix = $prefix.TrimEnd('\', '/')
+        if (-not (Test-Path $prefix)) { return }
+        # conda 环境的 python.exe 在环境根目录；venv 的在 Scripts\（Windows）或 bin/（POSIX）
+        $exe = Join-Path $prefix "python.exe"
+        if (-not (Test-Path $exe)) { $exe = Join-Path $prefix "Scripts\python.exe" }
+        if (-not (Test-Path $exe)) { $exe = Join-Path $prefix "bin\python" }
+        if (-not (Test-Path $exe)) { return }
+        $items.Add([pscustomobject]@{
+            Label = $label; Path = $exe; Kind = $kind; Ready = (Test-ProjectPython $exe)
+        })
+    }
+    # 1) 当前终端已激活的虚拟环境
+    if ($env:CONDA_PREFIX) { & $add ("conda: " + [System.IO.Path]::GetFileName($env:CONDA_PREFIX.TrimEnd('\', '/'))) $env:CONDA_PREFIX "conda" }
+    if ($env:VIRTUAL_ENV)   { & $add ("venv: " + [System.IO.Path]::GetFileName($env:VIRTUAL_ENV.TrimEnd('\', '/'))) $env:VIRTUAL_ENV "venv" }
+    # 2) 项目目录 / 仓库根下的虚拟环境
+    $rootParent = Split-Path -Path $root -Parent
+    foreach ($d in @((Join-Path $root ".venv"), (Join-Path $root "venv"), (Join-Path $root "env"),
+                     (Join-Path $rootParent ".venv"))) {
+        if (Test-Path $d) { & $add ("项目环境: " + $d) $d "venv" }
+    }
+    return $items
 }
 
 # 解析部署权重: configs.yaml 的 model_path，留空则回退 runs/registry.json 最新登记。
@@ -204,6 +244,22 @@ Write-Host ""
 Write-Host "pest_detector 环境自检" -ForegroundColor Cyan
 Write-Host ("-" * 60) -ForegroundColor DarkGray
 
+# 0) 虚拟环境探测（决定后续用哪个环境启动）
+$venvs = @()
+try { $venvs = @(Get-VirtualEnvs) } catch { $venvs = @() }
+$readyVenvs = @($venvs | Where-Object { $_.Ready })
+if ($venvs.Count -eq 0) {
+    Write-Item "INFO" "虚拟环境" "未检测到已激活或项目内的虚拟环境，将自动查找系统 / conda 环境"
+} elseif ($readyVenvs.Count -gt 0) {
+    Write-Item "OK" "虚拟环境" ("发现 " + $readyVenvs.Count + " 个可用环境")
+} else {
+    Write-Item "WARN" "虚拟环境" "发现虚拟环境但缺少依赖（torch/ultralytics/fastapi/uvicorn）"
+}
+foreach ($v in $venvs) {
+    $mark = if ($v.Ready) { "可用 " } else { "缺依赖" }
+    Write-Host ("         [{0}] {1}  ({2})" -f $mark, $v.Label, $v.Path) -ForegroundColor DarkGray
+}
+
 # 1) 解释器 + 依赖
 $chosen = $null
 $candidates = @()
@@ -223,7 +279,12 @@ if (-not $chosen -and $Install) {
 
 if ($chosen) {
     Save-CachedPython $chosen
-    Write-Item "OK" "Python 解释器" $chosen
+    $chosenEnv = $venvs | Where-Object { $_.Path -eq $chosen } | Select-Object -First 1
+    if ($chosenEnv) {
+        Write-Item "OK" "Python 解释器" ("$chosen  ← 作为启动环境（" + $chosenEnv.Label + "）")
+    } else {
+        Write-Item "OK" "Python 解释器" $chosen
+    }
     $prev = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
     $info = & $chosen -c "import sys, importlib.metadata as m; print('py' + sys.version.split()[0]); print(' '.join(p + '=' + m.version(p) for p in ('torch','ultralytics','fastapi','uvicorn','pydantic')))" 2>$null
