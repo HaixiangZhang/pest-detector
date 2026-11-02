@@ -238,14 +238,19 @@ if (Test-Path $cfgPath) {
 }
 
 # 3) 模型权重
+#    缺失不算启动失败: 网页端打开后会自动下载；推理前补齐即可。
 $modelPath = Get-ModelPath
 if (-not $modelPath) {
-    Write-Item "WARN" "模型权重" "configs.yaml 的 model_path 为空且 runs/registry.json 无登记 → 任务会在运行时失败"
+    Write-Item "WARN" "模型权重" "configs.yaml 的 model_path 为空且无登记 → 网页端打开后自动下载"
 } elseif (Test-Path $modelPath) {
     $mb = [math]::Round((Get-Item $modelPath).Length / 1MB, 1)
-    Write-Item "OK" "模型权重" "$modelPath  (${mb} MB)"
+    if ((Get-Item $modelPath).Length -lt 10MB) {
+        Write-Item "WARN" "模型权重" "$modelPath  仅 ${mb} MB（疑似 Git LFS 指针文件，网页端会重新下载）"
+    } else {
+        Write-Item "OK" "模型权重" "$modelPath  (${mb} MB)"
+    }
 } else {
-    Write-Item "FAIL" "模型权重" "路径不存在: $modelPath"
+    Write-Item "WARN" "模型权重" "不存在: $modelPath → 网页端打开后自动下载"
 }
 
 # 4) 前端产物
@@ -328,9 +333,17 @@ if ($script:FailCount -gt 0) {
 }
 
 # --- 前端构建 ---------------------------------------------------------------
-if ($Build -or -not (Test-Path $distIndex)) {
+# web/dist 已随仓库发布，一般无需 Node；只有源码比产物新时才重建。
+$needBuild = $Build -or -not (Test-Path $distIndex)
+if (-not $needBuild) {
+    $newestSrc = Get-ChildItem (Join-Path $root "web\src") -Recurse -File -ErrorAction SilentlyContinue |
+                 Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($newestSrc -and (Get-Item $distIndex).LastWriteTime -lt $newestSrc.LastWriteTime) { $needBuild = $true }
+}
+
+if ($needBuild) {
     if (-not $npmCmd) {
-        Write-Host "[前端] 未找到 npm，跳过构建；根路径将没有界面（仅 /docs 可用）" -ForegroundColor Yellow
+        Write-Host "[前端] 未找到 npm，跳过构建；根路径将没有界面（仅 /api/docs 可用）" -ForegroundColor Yellow
     } else {
         Write-Host "[前端] 构建中 (web/dist) ..." -ForegroundColor Cyan
         Push-Location (Join-Path $root "web")
@@ -348,6 +361,7 @@ if ($Build -or -not (Test-Path $distIndex)) {
 $urlHost = if ($BindHost -eq "0.0.0.0") { "127.0.0.1" } else { $BindHost }
 $url = "http://${urlHost}:$Port/"
 Write-Host "[启动] $url  (Ctrl+C 停止)" -ForegroundColor Cyan
+Write-Host "       首次打开页面会自动检测环境并下载缺失的权重。" -ForegroundColor DarkGray
 
 if ($Open) {
     Start-Job -ScriptBlock { param($u) Start-Sleep -Seconds 3; Start-Process $u } -ArgumentList $url | Out-Null

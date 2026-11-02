@@ -68,9 +68,82 @@ export interface WeightItem {
 
 export interface PresetItem {
   name: string
+  /** 展示名（default → 默认）。 */
+  label: string
   path: string
   /** 该预设显式覆盖的字段（增量，未写的沿用 configs.yaml）。 */
   params: Record<string, unknown>
+}
+
+// 系统环境（/api/system/info）
+export interface GpuDevice {
+  index: number
+  name: string
+  total_gb: number
+  free_gb: number
+  capability: string
+}
+
+export interface GpuInfo {
+  available: boolean
+  cuda_version: string | null
+  torch_version: string | null
+  devices: GpuDevice[]
+  error: string | null
+  driver?: string
+}
+
+export interface WeightStatus {
+  model_path: string
+  path: string
+  exists: boolean
+  size_mb: number
+  valid: boolean
+  reason: string
+  default_name: string
+  default_sha256: string
+  config_error: string | null
+}
+
+export interface SystemInfo {
+  version: string
+  cpu: { name: string; logical_cores: number | null; machine: string }
+  memory: { total_gb: number; available_gb: number }
+  gpu: GpuInfo
+  software: {
+    python: string
+    python_exe: string
+    platform: string
+    ffmpeg: string
+    versions: Record<string, string | null>
+    web_dist: string
+    web_dist_exists: boolean
+  }
+  weights: WeightStatus
+  project_root: string
+}
+
+export interface DownloadState {
+  running: boolean
+  status: 'idle' | 'running' | 'done' | 'error'
+  done_bytes: number
+  total_bytes: number
+  percent: number
+  path: string
+  error: string
+  source: string
+}
+
+export interface DocItem {
+  name: string
+  title: string
+  exists: boolean
+}
+
+export interface DocContent {
+  name: string
+  title: string
+  content: string
 }
 
 /** 用户上传的源视频（持久化在 data/uploads/，刷新后仍在）。 */

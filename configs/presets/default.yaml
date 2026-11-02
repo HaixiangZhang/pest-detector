@@ -1,0 +1,33 @@
+# 参数预设: 默认（当前部署配置 configs.yaml 的推理参数快照）
+# 只写要覆盖 configs.yaml 的字段；其余沿用默认值。
+# 网页端「保存推理配置」会重写本文件 —— 只需在界面里调好参数后点一下保存。
+mode: sahi
+frame_stride: 1
+max_frames: 0
+sahi:
+  conf: 0.65
+  slice_size: 640
+  overlap_ratio: 0.2
+  batch: 8
+direct:
+  imgsz: 1920
+  batch: 1
+mask:
+  enabled: true
+tracker:
+  high_thresh: 0.25
+  low_thresh: 0.1
+  new_track_thresh: 0.25
+  match_thresh: 0.25
+  second_match_thresh: 0.3
+  boot_match_iou: 0.1
+  match_dist_gate: 3.5
+  track_buffer: 3
+  min_track_frames: 3
+  merge_gap_frames: 12
+  merge_dist_threshold: 500
+  merge_speed_max: 150
+  spatial_overlap: 0.5
+  confirm_enabled: true
+  confirm_window: 0
+  confirm_min_hits: 0

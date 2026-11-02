@@ -73,7 +73,27 @@ def test_meta_presets(client):
     res = client.get("/api/meta/presets")
     assert res.status_code == 200
     names = {item["name"] for item in res.json()["items"]}
-    assert {"fast", "accurate"} <= names
+    assert "default" in names                    # 只保留「默认」预设
+    assert {"fast", "accurate"} & names == set()
+
+
+def test_meta_docs(client):
+    res = client.get("/api/meta/docs")
+    assert res.status_code == 200
+    names = {item["name"] for item in res.json()["items"]}
+    assert "web-guide" in names
+    assert client.get("/api/meta/docs/web-guide").json()["content"].strip()
+
+
+def test_system_info(client):
+    """系统环境探测: 至少能返回 CPU / 内存 / 权重状态（GPU 允许缺失）。"""
+    res = client.get("/api/system/info")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["cpu"]["logical_cores"]
+    assert "valid" in body["weights"]
+    assert client.get("/api/system/weights/download").json()["status"] in (
+        "idle", "running", "done", "error")
 
 
 def test_create_job_rejects_bad_mode(client):

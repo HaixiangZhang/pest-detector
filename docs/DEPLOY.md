@@ -36,7 +36,7 @@ cd web && npm install && npm run build && cd ..
 构建后 `web/dist` 存在，FastAPI 会自动把它挂到根路径，浏览器访问
 `http://<host>:8000/` 即是完整应用（API 与前端同源，无跨域问题）。
 
-> 若不做前端构建，后端 API 仍可用（`/docs` 有 Swagger），只是没有网页界面。
+> 若不做前端构建，后端 API 仍可用（`/api/docs` 有 Swagger），只是没有网页界面。
 
 ---
 
@@ -69,15 +69,12 @@ python cli.py weights --list
 ### 3.3 参数预设
 
 `configs/presets/*.yaml` 是**增量覆盖**：只写要改的字段，未写的沿用 `configs.yaml`。
-新建任务页的下拉即读这里（`GET /api/meta/presets` 会连覆盖字段一起返回，
-选中后在表单里直接展示"这个预设改了什么"）；也可在请求里用 `params` 覆盖任意字段。
+新建任务页的下拉即读这里（`GET /api/meta/presets` 会连覆盖字段一起返回）；
+也可在请求里用 `params` 覆盖任意字段。
 
-**内置两个预设**：
-
-| 预设 | 覆盖字段 | 含义 |
-| --- | --- | --- |
-| `fast`（快检） | `frame_stride: 3`、`snapshots.enabled: false`、`sahi.batch: 8` | 抽帧到 1/3（约 3 倍速）、不写快照，只要计数 |
-| `accurate`（高精度） | `frame_stride: 1`、`sahi.multi_scale: true`、`sahi.conf: 0.55`、`sahi.batch: 4`、`tracker.confirm_enabled: true`、`confirm_window: 10`、`confirm_min_hits: 8` | 逐帧 + 多尺度切片 + 放宽阈值提召回；稳定确认门控压闪光误检（8GB 显存下 batch 调小防 OOM） |
+**内置一个预设**: `default`（默认）—— 当前部署配置的推理参数快照。
+在网页端调好参数后点「保存推理配置」会重写它（`PUT /api/meta/presets/default`），
+下次打开自动带出。
 
 **改 / 加预设**：直接编辑 `configs/presets/<name>.yaml`，或新增一个 `<name>.yaml`
 ——接口按目录扫描，前端下拉与 `POST /api/jobs` 的 `preset` 字段自动识别，无需改代码。

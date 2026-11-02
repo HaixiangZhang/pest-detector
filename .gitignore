@@ -22,7 +22,7 @@ videos/
 
 # 前端
 web/node_modules/
-web/dist/
+# web/dist 随仓库发布（clone 后无需 Node 即可直接打开界面），故不忽略
 web/.vite/
 web/.npm-cache/
 # 前端构建产物（源码是 vite.config.ts；tsc 生成的 .js/.d.ts 与 tsbuildinfo 不入库）

@@ -18,11 +18,12 @@
 pip install torch==2.7.0 torchvision==0.22.0 torchaudio==2.7.0 --index-url https://download.pytorch.org/whl/cu128
 pip install -e ".[web,dev]"        # 只要命令行可省去 [web]
 
-# 2. 启动（首次加 -Build 先构建前端）
-#    脚本会自动找到装有依赖的解释器，无需手动 conda activate；也可直接双击 scripts\start.bat
-.\scripts\start.ps1 -Build
+# 2. 启动
+#    脚本会自动找到装有依赖的解释器，无需手动 conda activate；
+#    也可以直接双击项目根目录的 start.bat（自检 + 启动 + 打开浏览器）
+.\scripts\start.ps1 -Open
 
-# 3. 浏览器打开 http://127.0.0.1:8000/   （API 文档: /docs）
+# 3. 浏览器打开 http://127.0.0.1:8000/   （API 文档: /api/docs）
 ```
 
 > 未 `pip install -e .` 时，仓库根的 `cli.py` 会自动把 `src/` 加入 `sys.path`，
@@ -48,7 +49,12 @@ python cli.py direct --source videos/test0.mp4    # 整帧直推（速度优先�
 ## 启动 Web 应用
 
 Web 端 = **后端**（FastAPI + Uvicorn）+ **前端**（Vite 构建产物 `web/dist`，由后端同源挂载）。
-前端**只需构建一次**，之后启动后端即可访问完整界面。
+前端产物**已随仓库发布**，克隆后无需 Node.js 也能直接打开界面。
+
+**最短路径（Windows）**：双击项目根目录的 **`start.bat`** —— 自动找解释器、自检、启动、打开浏览器。
+
+打开页面后会自动检测 CPU / GPU / 内存 / 依赖 / 权重，并在权重缺失时自动下载（SHA256 校验）。
+这些都显示在「系统环境」页；新建任务页调好参数后可用「保存推理配置」写回「默认」预设。
 
 ### 方式一：一键脚本（推荐）
 
@@ -69,7 +75,8 @@ Linux 服务器常驻（systemd）：`sudo ./scripts/install-service.sh --host 0
 会生成单元文件并 `enable --now`；卸载用 `sudo ./scripts/uninstall-service.sh`。
 细节见 [docs/DEPLOY.md](docs/DEPLOY.md)。
 
-**Windows**：在资源管理器里**双击 `scripts\start.bat`**，或在任意终端执行 `.\scripts\start.ps1`。
+**Windows**：在资源管理器里**双击项目根目录的 `start.bat`**（自检 + 启动 + 自动打开浏览器），
+或在任意终端执行 `.\scripts\start.ps1`。
 
 ```powershell
 .\scripts\start.ps1                                # 自检 + 启动；Ctrl+C 停止
@@ -92,7 +99,7 @@ Linux 服务器常驻（systemd）：`sudo ./scripts/install-service.sh --host 0
 | --- | --- |
 | Python 解释器 + 依赖 | `FAIL` 终止启动（找不到含 `torch`/`ultralytics`/`fastapi`/`uvicorn` 的解释器） |
 | `configs.yaml` | `FAIL` 终止启动（文件缺失） |
-| 模型权重 | `FAIL` 终止（`model_path` 指向的文件不存在）；`WARN`（`model_path` 为空且无登记权重） |
+| 模型权重 | `WARN`（缺失或只是 LFS 指针文件；页面打开后会自动下载），不阻塞启动 |
 | 前端产物 `web/dist` | `WARN`，启动时会尝试自动构建 |
 | Node / npm | `WARN`（无 npm 时无法构建前端；已有 `web/dist` 不影响启动） |
 | ffmpeg | `WARN`（输出视频保留 mp4v，4K 拖动可能卡） |
@@ -141,7 +148,7 @@ python -m pestdet.server --host 127.0.0.1 --port 8000
 pestdet-server --host 127.0.0.1 --port 8000
 ```
 
-浏览器打开 **http://127.0.0.1:8000/** ； 接口文档 **http://127.0.0.1:8000/docs** 。
+浏览器打开 **http://127.0.0.1:8000/** ； 接口文档 **http://127.0.0.1:8000/api/docs** 。
 
 > 未 `pip install -e .` 时，给启动命令加 `PYTHONPATH`：
 > `$env:PYTHONPATH="src"; python -m pestdet.server --host 127.0.0.1 --port 8000`
@@ -164,7 +171,7 @@ npm run dev            # http://localhost:5173
 
 | 项 | 说明 |
 | --- | --- |
-| 前端未构建 | `web/dist` 不存在时服务仍能起，但根路径没有界面，只能用 `/docs` 调 API |
+| 前端未构建 | `web/dist` 不存在时服务仍能起，但根路径没有界面，只能用 `/api/docs` 调 API |
 | Python 环境 | 必须用装有项目依赖的解释器（先 `conda activate yolo11`，或用 `-Python` 指定），否则报 `No module named 'uvicorn'` |
 | 端口被占用 | 换 `--port`；或查占用进程 `Get-NetTCPConnection -LocalPort 8000 -State Listen` |
 | 必须单 worker | 任务执行器是进程内的（线程池 + 内存事件总线 + SQLite），多 worker 会导致进度/取消错乱 |
@@ -272,7 +279,7 @@ pest_detector/
 ├── cli.py                # 统一命令行入口（薄转发 → pestdet.cli.main:main）
 ├── pyproject.toml        # 包元数据 / 依赖 / ruff / black / pytest 配置
 ├── configs.yaml          # 部署参数（默认模板，唯一默认值来源）
-├── configs/presets/      # 参数预设（fast / accurate，增量覆盖）
+├── configs/presets/      # 参数预设（default = 默认，网页端「保存推理配置」写回）
 ├── best.pt               # 部署权重（YOLO11x-P2 单类别模型，Git LFS 管理）
 ├── README.md
 ├── .gitattributes        # Git LFS 规则（*.pt 等大文件）
@@ -378,13 +385,12 @@ CLI 会打印后退出，API 会转成 **422 + 字段级错误列表**：
 
 | 预设 | 用途 |
 | --- | --- |
-| `fast` | 抽帧 1/3、关视频与快照 —— 快速出计数 |
-| `accurate` | 逐帧 + 多尺度切片 + 稳定确认门控 —— 慢但召回高 |
+| `default`（默认） | 当前部署配置的推理参数快照；网页端点「保存推理配置」即写回它 |
 
 ```powershell
 python cli.py sahi --source videos/test0.mp4   # CLI 侧直接改 configs.yaml 即可
 curl -X POST http://127.0.0.1:8000/api/jobs -H "Content-Type: application/json" `
-  -d '{"source":"videos/test0.mp4","mode":"sahi","preset":"fast"}'
+  -d '{"source":"videos/test0.mp4","mode":"sahi","preset":"default"}'
 ```
 
 ### 输出视频编码（`encode`）

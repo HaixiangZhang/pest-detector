@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from pestdet import __version__
-from pestdet.api import routes_jobs, routes_meta, routes_uploads
+from pestdet.api import routes_jobs, routes_meta, routes_system, routes_uploads
 from pestdet.api.errors import install_exception_handlers
 from pestdet.infra.logging import configure_logging, get_logger
 from pestdet.infra.paths import PROJECT_ROOT
@@ -62,6 +62,10 @@ def create_app() -> FastAPI:
         description="4K 航拍视频害虫检测与跨帧去重计数",
         version=__version__,
         lifespan=lifespan,
+        # Swagger 放到 /api/docs：根路径的 /docs 留给前端「使用文档」页
+        docs_url="/api/docs",
+        redoc_url="/api/redoc",
+        openapi_url="/api/openapi.json",
     )
 
     # MVP 前后端分离开发时跨域放开；生产由同源静态站点提供，可收紧
@@ -74,6 +78,7 @@ def create_app() -> FastAPI:
 
     install_exception_handlers(app)
     app.include_router(routes_meta.router)
+    app.include_router(routes_system.router)
     app.include_router(routes_uploads.router)
     app.include_router(routes_jobs.router)
 

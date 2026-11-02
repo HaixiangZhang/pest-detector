@@ -2,11 +2,15 @@
 
 import type {
   DetectMode,
+  DocContent,
+  DocItem,
+  DownloadState,
   FrameItem,
   Job,
   JobEvent,
   PresetItem,
   ResultJson,
+  SystemInfo,
   UploadItem,
   VideoItem,
   WeightItem,
@@ -60,6 +64,31 @@ export const getConfigSchema = () =>
 
 export const listPresets = () =>
   request<{ items: PresetItem[] }>('/meta/presets')
+
+/** 保存推理配置为预设（前端「保存推理配置」按钮）。 */
+export const savePreset = (name: string, params: Record<string, unknown>) =>
+  request<PresetItem>(`/meta/presets/${encodeURIComponent(name)}`, {
+    method: 'PUT',
+    body: JSON.stringify({ params }),
+  })
+
+// ---------------------------------------------------------------- 内置文档
+
+export const listDocs = () => request<{ items: DocItem[] }>('/meta/docs')
+
+export const getDoc = (name: string) =>
+  request<DocContent>(`/meta/docs/${encodeURIComponent(name)}`)
+
+// ---------------------------------------------------------------- 系统环境
+
+export const getSystemInfo = (refresh = false) =>
+  request<SystemInfo>(`/system/info?refresh=${refresh}`)
+
+export const getWeightDownload = () =>
+  request<DownloadState>('/system/weights/download')
+
+export const startWeightDownload = () =>
+  request<DownloadState>('/system/weights/download', { method: 'POST' })
 
 // ---------------------------------------------------------------- 上传（用户数据）
 

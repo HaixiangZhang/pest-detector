@@ -1,8 +1,0 @@
-# 参数预设: 快检（快速出计数）
-# 只写要覆盖 configs.yaml 的字段；其余沿用默认值。
-# 用法: POST /api/jobs {"source": "...", "mode": "sahi", "preset": "fast"}
-frame_stride: 3              # 抽帧到 1/3，速度约 3 倍
-snapshots:
-  enabled: false
-sahi:
-  batch: 8

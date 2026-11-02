@@ -123,7 +123,7 @@ if [ "$HOME_DIR" != "$ROOT" ] && [ ! -e "$HOME_DIR/web/dist" ]; then
     fi
 fi
 if [ ! -f "$HOME_DIR/web/dist/index.html" ]; then
-    echo "[警告] $HOME_DIR/web/dist/index.html 不存在；根路径将没有界面（仅 /docs 可用）。" >&2
+    echo "[警告] $HOME_DIR/web/dist/index.html 不存在；根路径将没有界面（仅 /api/docs 可用）。" >&2
     echo "       请先在仓库根执行: ./scripts/start.sh --build  （或 cd web && npm install && npm run build）" >&2
 fi
 

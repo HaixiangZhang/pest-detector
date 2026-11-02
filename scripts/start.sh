@@ -282,12 +282,16 @@ case "$MODEL_RAW" in
 esac
 
 if [ -z "$MODEL_PATH" ]; then
-    warn "模型权重" "configs.yaml 的 model_path 为空且 runs/registry.json 无登记 → 任务会在运行时失败"
+    warn "模型权重" "configs.yaml 的 model_path 为空且 runs/registry.json 无登记 → 网页端打开后自动下载"
 elif [ -f "$MODEL_PATH" ]; then
     mb="$(du -m "$MODEL_PATH" 2>/dev/null | awk '{print $1}')"
-    ok "模型权重" "$MODEL_PATH  (${mb:-?} MB)"
+    if [ "${mb:-0}" -lt 10 ]; then
+        warn "模型权重" "$MODEL_PATH  仅 ${mb:-?} MB（疑似 Git LFS 指针文件，网页端会重新下载）"
+    else
+        ok "模型权重" "$MODEL_PATH  (${mb:-?} MB)"
+    fi
 else
-    fail "模型权重" "路径不存在: $MODEL_PATH"
+    warn "模型权重" "不存在: $MODEL_PATH → 网页端打开后自动下载"
 fi
 
 # 4) 前端产物（代码从 PESTDET_HOME/web/dist 挂载，非仓库根）
@@ -376,7 +380,7 @@ ensure_dist_visible() {
 
 if [ "$DO_BUILD" = 1 ] || [ ! -f "$DIST/index.html" ]; then
     if ! command -v npm >/dev/null 2>&1; then
-        echo "${C_WARN}[前端] 未找到 npm，跳过构建；根路径将没有界面（仅 /docs 可用）${C_OFF}"
+        echo "${C_WARN}[前端] 未找到 npm，跳过构建；根路径将没有界面（仅 /api/docs 可用）${C_OFF}"
     else
         echo "${C_CYAN}[前端] 构建中 (web/dist) ...${C_OFF}"
         if [ ! -d "$ROOT/web/node_modules" ]; then

@@ -31,6 +31,7 @@ import {
   listPresets,
   listUploads,
   listVideos,
+  savePreset,
   uploadVideo,
   uploadVideoUrl,
 } from '../api/client'
@@ -120,13 +121,13 @@ export default function NewJob() {
   const [defaults, setDefaults] = useState<Record<string, any> | null>(null)
   const [errors, setErrors] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState<number | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [advancedOpen, setAdvancedOpen] = useState(false)
 
   const selectedPreset = Form.useWatch('preset', form)
   const mode = Form.useWatch('mode', form) as DetectMode | undefined
-  const presetDetail = presets.find((item) => item.name === selectedPreset)
 
   const refreshUploads = () =>
     listUploads()
@@ -139,6 +140,7 @@ export default function NewJob() {
       if (!defaults) return
       const cfg = preset ? deepMerge(defaults, preset.params) : defaults
       form.setFieldsValue({
+        mode: cfg.mode,
         frame_stride: cfg.frame_stride,
         max_frames: cfg.max_frames,
         sahi: {
@@ -209,8 +211,32 @@ export default function NewJob() {
   }
 
   const onReset = () => {
-    form.resetFields()            // 回到 initialValues（mode=sahi / preset=null）
-    applyEffective(undefined)     // 其余字段回填默认配置
+    form.resetFields()            // 回到 initialValues（mode=sahi / preset=default）
+    applyEffective(presets.find((item) => item.name === 'default'))  // 其余字段回填默认配置
+  }
+
+  /** 把当前表单里的推理参数存成「默认」预设，下次打开自动带出。 */
+  const onSaveConfig = async () => {
+    const values = form.getFieldsValue(true) as Record<string, any>
+    const params = { ...values }
+    delete params.source                 // 视频选择与预设名不算推理配置
+    delete params.preset
+    setSaving(true)
+    setErrors([])
+    try {
+      await savePreset('default', prune(params))
+      const res = await listPresets()
+      setPresets(res.items)
+      message.success('推理配置已保存（默认）')
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setErrors(err.errors.length ? err.errors : [err.message])
+      } else {
+        setErrors(['保存失败'])
+      }
+    } finally {
+      setSaving(false)
+    }
   }
 
   const onFinish = async (values: Record<string, any>) => {
@@ -382,7 +408,7 @@ export default function NewJob() {
       )}
 
       <Form form={form} layout="vertical" onFinish={onFinish}
-            initialValues={{ mode: 'sahi', preset: null }}>
+            initialValues={{ mode: 'sahi', preset: 'default' }}>
         <Form.Item label="上传视频">
           <Upload.Dragger
             name="file"
@@ -467,11 +493,9 @@ export default function NewJob() {
             </Form.Item>
           </Col>
           <Col span={8}>
-            <Form.Item name="preset" label="参数预设">
+            <Form.Item name="preset" label="参数预设" tooltip="只有「默认」一套；调好参数后点下方「保存推理配置」即可覆盖它">
               <Select
-                allowClear
-                placeholder="（可选）"
-                options={presets.map((preset) => ({ value: preset.name, label: preset.name }))}
+                options={presets.map((preset) => ({ value: preset.name, label: preset.label }))}
               />
             </Form.Item>
           </Col>
@@ -488,16 +512,16 @@ export default function NewJob() {
           </Col>
         </Row>
 
-        {presetDetail && (
+        {selectedPreset && (
           <Alert
             type="info"
             showIcon
             style={{ marginBottom: 16 }}
-            message={<Space>预设 <Tag>{presetDetail.name}</Tag> 覆盖的参数（未列出的沿用默认配置）</Space>}
-            description={
-              <pre style={{ margin: 0, fontSize: 12 }}>
-                {JSON.stringify(presetDetail.params, null, 2)}
-              </pre>
+            message={
+              <Space>
+                预设 <Tag>{presets.find((item) => item.name === selectedPreset)?.label ?? selectedPreset}</Tag>
+                为当前部署配置；修改参数后可点下方「保存推理配置」写回该预设
+              </Space>
             }
           />
         )}
@@ -522,6 +546,7 @@ export default function NewJob() {
         <Form.Item style={{ marginTop: 16 }}>
           <Space>
             <Button type="primary" htmlType="submit" loading={submitting}>提交任务</Button>
+            <Button onClick={onSaveConfig} loading={saving}>保存推理配置</Button>
             <Button onClick={onReset}>重置</Button>
           </Space>
         </Form.Item>
