@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pest-detector"
+version = "0.1.0"
+description = "4K 航拍视频害虫检测与跨帧去重计数"
+readme = { text = "4K 航拍视频害虫检测与跨帧去重计数（Web 版）。完整文档见仓库根目录 README.md。", content-type = "text/markdown" }
+requires-python = ">=3.10"
+dependencies = [
+    # 注意: CUDA 版 torch 需先从专用源安装（见 README「安装」），
+    # 否则 pip 会拉 PyPI 的 CPU 轮子。版本一致时这里的声明不会触发重装。
+    "torch==2.7.0",
+    "torchvision==0.22.0",
+    "torchaudio==2.7.0",
+    "ultralytics==8.4.104",
+    "opencv-python==5.0.0.93",
+    "numpy==2.2.6",
+    "PyYAML==6.0.3",
+    "pydantic>=2.6",
+    "Pillow==12.3.0",
+    "matplotlib==3.10.9",
+    "tqdm==4.67.1",
+]
+
+[project.optional-dependencies]
+web = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov",
+    "httpx",          # FastAPI TestClient 依赖
+    "ruff",
+    "black",
+]
+
+[project.scripts]
+pestdet = "pestdet.cli.main:main"
+pestdet-server = "pestdet.server:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+exclude = ["runs", "videos", "web"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]

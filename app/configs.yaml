@@ -1,0 +1,148 @@
+# ============================================================================
+# 部署配置 — cli.py 的 sahi / direct 子命令读取
+# （部署参数唯一来源；解析与字段级校验见 src/pestdet/config/schema.py）
+# 优先级链: CLI 显式参数 > 本文件 > 代码内置默认值
+# ============================================================================
+# 说明:
+#   全部可调参数都在本文件。mask / tracker / snapshots 三节必须写全
+#   （不再有"留空即用模块默认值"的兜底），字段名/类型/取值范围启动时逐条校验，
+#   写错字段名会直接报"未知字段"并终止，不会静默失效。
+# ----------------------------------------------------------------------------
+
+# ---- 表单字段（工作流输入）----
+model_path: ./best.pt        # 检测模型路径；留空 = 取 runs/registry.json 最新登记权重；也接受 "pest1"
+mode: sahi                   # 检测模式: sahi（默认，切片高精度）| direct（整帧直推，快）
+output_root: runs            # 输出根目录（相对项目根），产物落在 <output_root>/<视频名>_<时间戳>/
+
+# ---- 输出 ----
+save_json: true              # 是否写暂存数据 JSON
+video_name: tracked.mp4
+json_name: result.json
+save_track_path: true        # JSON 里是否带每条轨迹的逐帧中心点（UI 画轨迹用，体积很小）
+progress_every: 10           # 每处理多少帧刷新一次进度行
+
+# ---- 采样 ----
+frame_stride: 1              # 抽帧步长（1=逐帧；>1 时输出视频按 fps/stride 播放以保持时长）
+max_frames: 0                # 最多处理帧数（0=全部；调试用）
+
+# ---- 检测模式 A: SAHI 切片（mode: sahi）----
+sahi:
+  slice_size: 640            # 切片边长
+  overlap_ratio: 0.2         # 切片重叠率（0.15-0.25 推荐）
+  conf: 0.65                 # 检测置信度阈值
+  iou: 0.5                   # 融合 IoU 阈值
+  batch: 8                   # 切片批大小
+  device: 0                  # 推理设备（0/1/cpu）
+  quantize: null             # 精度量化: null=FP32 | 16=FP16 | 8=INT8
+  fusion: wbf                # 融合方式: wbf（加权框融合）| nms
+  min_coverage: 0.5          # 边缘切片最小保留比例
+  multi_scale: false         # 多尺度切片（更准更慢）
+  scale_sizes: [640, 960, 1280]
+
+# ---- 检测模式 B: 整帧直推（mode: direct）----
+direct:
+  imgsz: 1920                # P2 头下 4K 视频建议 1920
+  conf: 0.60
+  iou: 0.45                  # NMS IoU 阈值
+  device: 0
+  quantize: null             # 精度量化: null=FP32 | 16=FP16 | 8=INT8
+  max_det: 300
+  batch: 1                   # 帧批大小: 缓冲 N 帧合并成一次前向（提升 GPU 利用率；
+                             # 1=逐帧，行为与单帧直推完全一致；8GB 显存调大易 OOM）
+
+# ---- 视频绘制（仅 ASCII 文本）----
+draw:
+  box: true                  # 画检测框
+  track_id: true             # 画 track ID
+  score: true                # 画置信度
+  trail: true                # 画轨迹尾迹
+  panel: true                # 左上角计数面板
+  roi_outline: false         # 是否在输出视频上画草地四边形轮廓（纯调试用）
+  trail_len: 30              # 尾迹保留点数
+  thickness: 2
+  font_scale: 0.5
+  box_color: [0, 0, 255]     # BGR
+  trail_color: [0, 200, 255]
+  roi_color: [0, 255, 0]
+  text_color: [255, 255, 255]
+
+# ---- 输出视频编码（OpenCV 只能写 mp4v/VP9/AV1/MJPG，其中 mp4v 无硬件解码，
+#      4K60 播放会卡；写完后用 ffmpeg 转成 H.264。找不到 ffmpeg 时保留 mp4v 并告警）----
+encode:
+  h264: true                 # 是否转码成 H.264（可硬件解码，播放流畅、文件更小）
+  ffmpeg: ""                 # ffmpeg 可执行文件完整路径；留空 = 自动探测（PATH → 常见安装位置 → TRAE 自带）
+  crf: 23                    # H.264 质量（0-51，越小越清晰也越大；23 接近视觉无损）
+  preset: veryfast           # x264 预设（ultrafast→veryslow，越慢压得越小；4K 建议 veryfast 起步）
+
+# ---- 草地遮罩（pestdet.core.roi 的 GrassMasker）----
+mask:
+  enabled: true              # 总开关
+  mode: auto                 # "auto"（自动绿色分割拟合）| "manual"（直接用 quad 手填坐标）
+  quad: []                   # manual 模式: [[x, y], ...] 4 个像素坐标点（TL→TR→BR→BL）
+  refresh_every: 1           # 每 N 帧重新拟合（1 = 逐帧重拟合；0 = 只在首帧拟合一次后固定）
+  max_area_jump: 2.0         # 面积突变守卫: 新四边形与上一帧面积比超过此值则弃用（0 = 关闭守卫）
+  expand_ratio: 0.02         # 四边形以质心为中心外扩比例（防止边缘虫体中心点被判在界外）
+  fill: 0                    # 区域外填充值（0 = 黑）
+  filter_outside: true       # 丢弃框中心落在四边形外的检测框
+  detect_scale: 0.25         # 分割时把帧降采样到该比例（草地边界是粗区域，1/4 分辨率足够；
+                             # 形态学是 4K 上的耗时大头，降采样后逐帧重拟合才跑得动）
+  hsv_lower: [35, 40, 40]    # 绿色 HSV 下界（OpenCV H 取值 0-179）
+  hsv_upper: [85, 255, 255]  # 绿色 HSV 上界
+  morph_kernel: 21           # 形态学核尺寸: 闭运算补洞 + 开运算去噪（按 detect_scale 同比缩放）
+  min_area_ratio: 0.05       # 绿色最大连通域占比下限，低于此值视为拟合失败（沿用上一帧四边形）
+  max_area_ratio: 0.98       # 占比上限（接近满屏时多为误分割，同样视为失败）
+  approx_eps_ratio: 0.02     # approxPolyDP 精度系数（相对凸包周长），不足 4 点自动放宽
+
+# ---- 跨帧关联与轨迹后处理（pestdet.core.tracker）----
+tracker:
+  # 检测分流（ByteTrack 两轮匹配的高/低分界）
+  high_thresh: 0.25          # 高于此值进第一轮匹配，且允许新建轨迹
+  low_thresh: 0.10           # 低于此值直接丢弃；两者之间留作第二轮救回
+  new_track_thresh: 0.25     # 新建轨迹的最低置信度（防误检起轨）
+  # 匹配阈值（IoU）
+  match_thresh: 0.25         # 第一轮: 速度已建立的轨迹。放宽原因: 实测同一只虫相邻两次
+                             # 检出的中心位移中位数 25~70px，而原 0.50 只允许约 25px，
+                             # 大量检测连不上 → 每段都新建轨迹（195 条原始轨迹只对应 5 只虫）
+  second_match_thresh: 0.30  # 第二轮: 用低分检测框救回快断的轨迹
+  boot_match_iou: 0.10       # 起步期（命中 <2 次、速度未知）放宽，避免小目标起步即断链
+  match_dist_gate: 3.5       # 距离门控: 匹配分数 = max(IoU, 1-中心距离/(gate×框尺寸))，
+                             # 兜住"位移大但确实是同一目标"（小目标抽帧时 IoU 会骤降到 0）。
+                             # 3.5 × 33px 框 + match_thresh 0.25 → 可连中心位移约 87px
+  track_buffer: 3            # 轨迹丢失后保留帧数。必须 < merge_gap_frames: 超过这么多帧没被
+                             # 检出就归档，归档后仍能在 merge_gap_frames 窗口内被"在线复活"
+                             # （见 tracker._try_revive），沿用原 ID 而不新建。
+                             # 若 >= merge_gap_frames，复活窗口为空、复活永远不触发。
+  # 轨迹后处理（三步清洗）
+  min_track_frames: 3        # 短轨迹过滤: 存活帧数 < 此值判为误检。1~2 帧的轨迹在 60fps 下
+                             # 只有 16~33ms，画面上等于不可见，且绝大多数是误检/重复检出，
+                             # 故过滤掉；代价是真·只出现 1~2 帧的虫会一并被删
+  merge_gap_frames: 12       # 最大关联间隔: 两段轨迹首尾相隔超过此帧数就认为无关、不合并。
+                             # 它同时决定"一条轨迹内部允许的最长断裂"和在线复活的窗口
+                             # （须 > track_buffer）。取 12: 实测真断轨多在 11 帧内、能接上；
+                             # 而 20~30 帧的间隔多半是"另一只虫在原地冒出"被误继承 ID，故拒掉
+  merge_dist_threshold: 500  # 关联距离上限 (px): 与 merge_speed_max 取小
+  merge_speed_max: 150       # 关联速度上限 (px/帧): 实际距离上限 = min(merge_dist_threshold,
+                             # merge_speed_max × 间隔帧数)。只看"离多远"、不看方向 —— 虫子会
+                             # 转向，方向约束会漏掉真断轨；用速度上限挡住"一帧跨半屏"的误接
+  spatial_overlap: 0.50      # 空间去重: 两条轨迹时间重叠的帧里，框 IoU 超过此值的帧过半 → 判为同一只
+                             # （按"同时刻逐帧框"比，不再用整段包络 —— 包络会随虫爬动变大，易连锁误并）
+  # 稳定确认（可开关；判定"是不是一只虫"的门控）
+  # 只有"在连续 N 帧内稳定被识别到"的轨迹才算虫子，压掉一闪而过的误检。
+  # 门控在 finalize()（决定计数）与 visible_confirmed()（决定画框）两处同时生效，
+  # 保证输出视频里看到的框与最终计数一致。
+  # 默认 window / min_hits 均为 0 = 不启用窗口门控（任一命中帧即确认）；
+  # 需要压误检时再把两者调大（如 10/10 = 要求连续 10 帧命中）。
+  confirm_enabled: true      # 总开关: false = 关闭
+  confirm_window: 0          # 观察窗口（处理帧）；0 = 不启用窗口门控
+  confirm_min_hits: 0        # 窗口内最少命中帧数；0 = 不启用窗口门控
+
+# ---- 检出帧快照（pestdet.core.snapshots）----
+snapshots:
+  enabled: true              # 总开关
+  mode: track                # 粒度: track=每只虫一张代表图（取该虫置信度最高的帧，张数=虫数）
+                             #       frame=每个"判定有虫"的帧一张（同帧多虫只落一张，张数=有虫帧数）
+  dir_name: frames           # 输出子目录（相对输出目录）
+  prefix: pest               # 文件名前缀
+  fmt: jpg                   # 图片格式 jpg / png
+  quality: 95                # JPEG 质量（png 忽略）
+  min_score: 0.0             # track 模式: 该虫代表帧的置信度下限；frame 模式: 该帧的最低轨迹置信度（0 = 全部）
